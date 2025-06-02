@@ -1,0 +1,2 @@
+https://ppi-produto.vercel.app/cadastroProduto
+https://github.com/JoaoPedroFurtado/PPI-AULA2-2025
