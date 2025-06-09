@@ -1,13 +1,30 @@
 import express from "express";
+import session from "express-session";
+import cookieParser from "cookie-parser";
 
 const host = "0.0.0.0";
 const port = 3000;
-
+const logado = false;
 const app = express();
 var listaProdutos = [];
 
 app.use(express.urlencoded({ extended: true }));
-app.get("/", (req, res) => {
+
+app.use(session({
+    secret: "M1nhaSenh4",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 1000 * 60 * 15,
+        httpOnly: true,
+        secure: false
+    } 
+}));
+
+app.use(cookieParser());
+
+app.get("/",  verificarAutenticacao, (req, res) => {
+   const ultimoLogin = req.cookies.ultimoLogin;
     res.send(`
     <html lang="pt-br">
     <head>
@@ -46,6 +63,7 @@ app.get("/", (req, res) => {
                             <a class="nav-link text-danger" href="/logout">Sair</a>
                         </li>
                     </ul>
+                    <span class="navbar-text">${ultimoLogin?"Ultimo acesso:" + ultimoLogin: ""}
                 </div>
             </div>
         </nav>
@@ -58,59 +76,60 @@ app.get("/", (req, res) => {
 
 
 
-app.get("/cadastroProduto", (req, res) => {
-    res.send(`
-    <html lang="pt-br">
-    <head>
-        <meta charset="UTF-8">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
-        <title>Cadastro de Produtos</title>
-    </head>
-    <body>
-        <div class="container w-75 mt-5">
-            <form class="row g-3 border rounded p-4" method="POST" action="/cadastroProduto" novalidate>
-                <fieldset>
-                    <legend class="text-center">Cadastro de Produto</legend>
-                </fieldset>
+app.get("/cadastroProduto", verificarAutenticacao, (req, res) => {
+            res.send(`
+            <html lang="pt-br">
+            <head>
+                <meta charset="UTF-8">
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+                <title>Cadastro de Produtos</title>
+            </head>
+            <body>
+                <div class="container w-75 mt-5">
+                    <form class="row g-3 border rounded p-4" method="POST" action="/cadastroProduto" novalidate>
+                        <fieldset>
+                            <legend class="text-center">Cadastro de Produto</legend>
+                        </fieldset>
 
-                <div class="col-md-6">
-                    <label for="nomeProduto" class="form-label">Nome do Produto</label>
-                    <input type="text" class="form-control" id="nomeProduto" name="nomeProduto" required>
-                </div>
+                        <div class="col-md-6">
+                            <label for="nomeProduto" class="form-label">Nome do Produto</label>
+                            <input type="text" class="form-control" id="nomeProduto" name="nomeProduto" required>
+                        </div>
 
-                <div class="col-md-6">
-                    <label for="categoria" class="form-label">Categoria</label>
-                    <input type="text" class="form-control" id="categoria" name="categoria" required>
-                </div>
+                        <div class="col-md-6">
+                            <label for="categoria" class="form-label">Categoria</label>
+                            <input type="text" class="form-control" id="categoria" name="categoria" required>
+                        </div>
 
-                <div class="col-md-4">
-                    <label for="preco" class="form-label">Preço (R$)</label>
-                    <input type="number" class="form-control" id="preco" name="preco" step="0.01" required>
-                </div>
+                        <div class="col-md-4">
+                            <label for="preco" class="form-label">Preço (R$)</label>
+                            <input type="number" class="form-control" id="preco" name="preco" step="0.01" required>
+                        </div>
 
-                <div class="col-md-4">
-                    <label for="quantidade" class="form-label">Quantidade em Estoque</label>
-                    <input type="number" class="form-control" id="quantidade" name="quantidade" required>
-                </div>
+                        <div class="col-md-4">
+                            <label for="quantidade" class="form-label">Quantidade em Estoque</label>
+                            <input type="number" class="form-control" id="quantidade" name="quantidade" required>
+                        </div>
 
-                <div class="col-md-4">
-                    <label for="codigo" class="form-label">Código do Produto</label>
-                    <input type="text" class="form-control" id="codigo" name="codigo" required>
+                        <div class="col-md-4">
+                            <label for="codigo" class="form-label">Código do Produto</label>
+                            <input type="text" class="form-control" id="codigo" name="codigo" required>
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-success" type="submit">Cadastrar Produto</button>
+                            <a class="btn btn-primary" type="button" href="/">Voltar</a>
+                        </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-12">
-                    <button class="btn btn-success" type="submit">Cadastrar Produto</button>
-                    <a class="btn btn-primary" type="button" href="/">Voltar</a>
-                </div>
-                </div>
-            </form>
-        </div>
-    </body>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
-    </html>
-    `);
+            </body>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js"></script>
+            </html>
+        `);
+        res.end();
 });
 
-app.post("/cadastroProduto", (requisicao, resposta) => {
+app.post("/cadastroProduto", verificarAutenticacao, (requisicao, resposta) => {
     const nomeProduto = requisicao.body.nomeProduto;
     const categoria = requisicao.body.categoria;
     const preco = requisicao.body.preco;
@@ -229,7 +248,7 @@ app.post("/cadastroProduto", (requisicao, resposta) => {
     };
 });
 
-app.get("/listaProdutos", (requisicao, resposta) => {
+app.get("/listaProdutos", verificarAutenticacao, (requisicao, resposta) => {
     let conteudo =`
         <html lang="pt-br">
     <head>
@@ -310,7 +329,7 @@ app.get("/login", (requisicao, resposta) => {
                     margin-bottom: 20px;
                     color: #0086A8;
                 }
-                input[type="text"], input[type="password"] {
+                input {
                     width: 100%;
                     padding: 10px;
                     margin: 10px 0;
@@ -347,15 +366,105 @@ app.get("/login", (requisicao, resposta) => {
     `);
 });
 
-app.post("/login", (requisicao, reposta)=> {
+app.post("/login", (requisicao, resposta)=> {
     const nameuser = requisicao.body.usuario;
     const senha = requisicao.body.senha;
-    //fazer validação
-    resposta.redirect("/")
+    if(nameuser == "admin" && senha == "123"){
+        requisicao.session.logado = true;
+        const dataHorasAtuais = new Date();
+        resposta.cookie('ultimoLogin', dataHorasAtuais.toLocaleDateString(), {maxAge: 1000 * 60 * 60 * 24 *30});
+        resposta.redirect("/");
+    }else{
+        resposta.send(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Login</title>
+            <style>
+                body {
+                    margin: 0;
+                    padding: 0;
+                    font-family: Arial, sans-serif;
+                    background-color:rgb(128, 128, 128);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                .login-container {
+                    background-color: #f1f1f1;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                    width: 300px;
+                    text-align: center;
+                }
+                h1 {
+                    color: white;
+                    position: absolute;
+                    top: 20px;
+                }
+                h2 {
+                    margin-bottom: 20px;
+                    color: #0086A8;
+                }
+                input {
+                    width: 100%;
+                    padding: 10px;
+                    margin: 10px 0;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                }
+                button {
+                    background-color: #0086A8;
+                    color: white;
+                    padding: 10px 20px;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                }
+                button:hover {
+                    background-color: #006b86;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Acessar o Sistema</h1>
+            <div class="login-container">
+                <h2>Login</h2>
+                <form action="" method="post">
+                <div>
+                    <label for="usuario">Usuário:</label><br>
+                    <input type="text" id="usuario" name="usuario" required>
+                </div>
+                <div>
+                    <label for="senha">Senha:</label><br>
+                    <input type="password" id="senha" name="senha" required>
+                 </div>
+                 <span style="color: red;"> Usuário ou senha inválidos!<span>
+                 <div class="mt-2">
+                    <button type="submit">Entrar</button>
+                 </div>
+                </form>
+            </div>
+        </body>
+     </html>
+    `);
+}
 });
 
+function verificarAutenticacao(requisicao, resposta, next){
+    if(requisicao.session.logado){
+        next();
+    }else{
+        resposta.redirect("/login");
+    }
+}
+
 app.get("/logout", (requisicao, resposta)=> {
-    resposta.send("<p>Voce saiu<p/>");
+    requisicao.session.destroy();
+    resposta.redirect("/login")
 });
 
 app.listen(port, host, () => {
